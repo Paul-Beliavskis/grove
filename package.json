@@ -1,7 +1,7 @@
 {
-  "name": "git-grove",
+  "name": "@paulbeliavskis/git-grove",
   "version": "0.1.0",
-  "description": "Git worktree manager CLI with PR review and AI integration",
+  "description": "CLI tool for managing Git worktrees across multiple repos with Jira sprint integration, Bitbucket/GitHub PR review workflows, AI-powered code review, shell integration (gw), and post-create hooks",
   "type": "module",
   "bin": {
     "grove": "./bin/grove.js"
