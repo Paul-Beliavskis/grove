@@ -1,0 +1,56 @@
+{
+  "name": "git-grove",
+  "version": "0.1.0",
+  "description": "Git worktree manager CLI with PR review and AI integration",
+  "type": "module",
+  "bin": {
+    "grove": "./bin/grove.js"
+  },
+  "main": "./dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "git",
+    "worktree",
+    "cli",
+    "bitbucket",
+    "github",
+    "code-review",
+    "ai"
+  ],
+  "author": "Paul Beliavskis",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paulbeliavskis/grove.git"
+  },
+  "homepage": "https://github.com/paulbeliavskis/grove#readme",
+  "bugs": {
+    "url": "https://github.com/paulbeliavskis/grove/issues"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^13.1.0",
+    "inquirer": "^12.6.0",
+    "ora": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "src/shell/"
+  ]
+}
