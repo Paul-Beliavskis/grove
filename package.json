@@ -26,11 +26,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/paulbeliavskis/grove.git"
+    "url": "git+https://github.com/Paul-Beliavskis/grove.git"
   },
-  "homepage": "https://github.com/paulbeliavskis/grove#readme",
+  "homepage": "https://github.com/Paul-Beliavskis/grove#readme",
   "bugs": {
-    "url": "https://github.com/paulbeliavskis/grove/issues"
+    "url": "https://github.com/Paul-Beliavskis/grove/issues"
   },
   "dependencies": {
     "chalk": "^5.3.0",
