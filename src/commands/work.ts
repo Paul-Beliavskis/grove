@@ -57,21 +57,25 @@ export async function workCommand(
     ]);
 
     selectedBranch = `origin/${repo.provider.targetBranches[0]}`;
-    // The worktree add will create the branch from the start point
+    // Create a local branch named after the ticket from the start point
     const folderName = stripPrefixes(branchName, repo.branchPatterns.stripPrefixes);
     const worktreePath = join(repo.worktreeParentDir, folderName);
 
     info(`Creating worktree at ${worktreePath}`);
+    let created: boolean;
     try {
-      addWorktree(repo.gitRoot, worktreePath, selectedBranch);
+      created = addWorktree(repo.gitRoot, worktreePath, selectedBranch, branchName);
     } catch {
       error('Failed to create worktree');
       return null;
     }
 
-    // Run hooks
-    runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot);
-    success(`Worktree created: ${worktreePath}`);
+    if (created) {
+      runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot);
+      success(`Worktree created: ${worktreePath}`);
+    } else {
+      success(`Worktree already exists: ${worktreePath}`);
+    }
     info(`Run 'gw ${folderName}' to cd into it`);
     return worktreePath;
   }
@@ -101,17 +105,20 @@ export async function workCommand(
   const worktreePath = join(repo.worktreeParentDir, folderName);
 
   info(`Creating worktree at ${worktreePath}`);
+  let created: boolean;
   try {
-    addWorktree(repo.gitRoot, worktreePath, selectedBranch);
+    created = addWorktree(repo.gitRoot, worktreePath, selectedBranch);
   } catch {
     error('Failed to create worktree');
     return null;
   }
 
-  // Run post-create hooks
-  runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot);
-
-  success(`Worktree created: ${worktreePath}`);
+  if (created) {
+    runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot);
+    success(`Worktree created: ${worktreePath}`);
+  } else {
+    success(`Worktree already exists: ${worktreePath}`);
+  }
   info(`Run 'gw ${folderName}' to cd into it`);
   return worktreePath;
 }

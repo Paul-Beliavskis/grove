@@ -193,6 +193,7 @@ export async function sprintCommand(options: { repo?: string }): Promise<string 
 
   let selectedBranch: string;
   let branchName: string;
+  let isNewBranch = false;
 
   if (matches.length === 0) {
     // No existing branch — create a new one
@@ -208,6 +209,7 @@ export async function sprintCommand(options: { repo?: string }): Promise<string 
 
     branchName = newBranchName;
     selectedBranch = `origin/${repo.provider.targetBranches[0]}`;
+    isNewBranch = true;
   } else if (matches.length === 1) {
     selectedBranch = matches[0];
     branchName = selectedBranch.replace(/^origin\//, '');
@@ -237,6 +239,7 @@ export async function sprintCommand(options: { repo?: string }): Promise<string 
       ]);
       branchName = newBranchName;
       selectedBranch = `origin/${repo.provider.targetBranches[0]}`;
+      isNewBranch = true;
     } else {
       selectedBranch = branch;
       branchName = selectedBranch.replace(/^origin\//, '');
@@ -249,17 +252,23 @@ export async function sprintCommand(options: { repo?: string }): Promise<string 
   const worktreePath = join(repo.worktreeParentDir, folderName);
 
   info(`Creating worktree at ${worktreePath}`);
+  let created: boolean;
   try {
-    addWorktree(repo.gitRoot, worktreePath, selectedBranch);
+    // When creating a new branch, use -b to name the local branch after the ticket.
+    // When checking out an existing remote branch, git auto-creates the local tracking branch.
+    created = addWorktree(repo.gitRoot, worktreePath, selectedBranch, isNewBranch ? branchName : undefined);
   } catch {
     error('Failed to create worktree');
     return null;
   }
 
-  // Run post-create hooks
-  runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot);
-
-  success(`Worktree created: ${worktreePath}`);
+  if (created) {
+    // Run post-create hooks only for newly created worktrees
+    runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot);
+    success(`Worktree created: ${worktreePath}`);
+  } else {
+    success(`Worktree already exists: ${worktreePath}`);
+  }
   info(`Run 'gw ${folderName}' to cd into it`);
   return worktreePath;
 }

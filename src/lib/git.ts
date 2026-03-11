@@ -1,4 +1,6 @@
 import { execSync } from 'child_process';
+import { existsSync, rmSync } from 'fs';
+import { resolve } from 'path';
 import type { WorktreeInfo } from './types.js';
 import { basename } from 'path';
 
@@ -61,15 +63,40 @@ export function searchRemoteBranches(
     .filter((b) => b.toLowerCase().includes(pattern.toLowerCase()));
 }
 
+/**
+ * Creates a worktree at the target path. Returns true if a new worktree was
+ * created, or false if the path was already a valid worktree.
+ */
 export function addWorktree(
   gitRoot: string,
   targetPath: string,
-  branch: string
-): void {
-  execSync(`git worktree add "${targetPath}" "${branch}"`, {
+  branch: string,
+  newBranch?: string
+): boolean {
+  if (existsSync(targetPath)) {
+    // Check if it's already a registered worktree
+    const normalized = resolve(targetPath).replace(/\\/g, '/');
+    const worktrees = listWorktrees(gitRoot);
+    const existing = worktrees.find(
+      (wt) => resolve(wt.path).replace(/\\/g, '/') === normalized
+    );
+    if (existing) {
+      // Already a valid worktree — nothing to create
+      return false;
+    }
+    // Stale leftover directory — prune git's worktree list and remove it
+    pruneWorktrees(gitRoot);
+    rmSync(targetPath, { recursive: true, force: true });
+  }
+
+  const cmd = newBranch
+    ? `git worktree add -b "${newBranch}" "${targetPath}" "${branch}"`
+    : `git worktree add "${targetPath}" "${branch}"`;
+  execSync(cmd, {
     cwd: gitRoot,
     stdio: 'inherit',
   });
+  return true;
 }
 
 export function removeWorktree(gitRoot: string, worktreePath: string): void {

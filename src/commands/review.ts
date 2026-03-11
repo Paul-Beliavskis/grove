@@ -2,12 +2,37 @@ import inquirer from 'inquirer';
 import { loadConfig, getRepoConfig } from '../lib/config.js';
 import { createProvider } from '../lib/providers/types.js';
 import { launchAiReview } from '../lib/ai.js';
-import { createTable, info, error, ora, truncate } from '../lib/ui.js';
+import { info, error, ora, truncate } from '../lib/ui.js';
 import { workCommand } from './work.js';
 
 export async function reviewCommand(options: { repo?: string }) {
   const config = loadConfig();
-  const { name, repo } = getRepoConfig(config, options.repo);
+
+  // If no --repo flag, prompt the user to pick one
+  let repoName = options.repo;
+  if (!repoName) {
+    const repoNames = Object.keys(config.repos);
+    if (repoNames.length === 0) {
+      error('No repos configured. Run `grove init` first.');
+      return;
+    }
+    if (repoNames.length === 1) {
+      repoName = repoNames[0];
+    } else {
+      const { selectedRepo } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'selectedRepo',
+          message: 'Select a repo:',
+          choices: repoNames,
+          default: config.defaults.repo,
+        },
+      ]);
+      repoName = selectedRepo;
+    }
+  }
+
+  const { name, repo } = getRepoConfig(config, repoName);
 
   info(`Fetching PRs for ${name} (${repo.provider.type})...`);
 
@@ -15,7 +40,7 @@ export async function reviewCommand(options: { repo?: string }) {
   let prs;
   try {
     const provider = createProvider(repo.provider);
-    prs = await provider.listPRs();
+    prs = await provider.listPRs([]);
     spinner.succeed(`Found ${prs.length} open PR(s)`);
   } catch (err: any) {
     spinner.fail('Failed to fetch PRs');
@@ -28,22 +53,6 @@ export async function reviewCommand(options: { repo?: string }) {
     return;
   }
 
-  // Display PR table
-  const table = createTable({
-    head: ['PR#', 'Title', 'Branch', 'Target'],
-  });
-
-  for (const pr of prs) {
-    table.push([
-      String(pr.id),
-      truncate(pr.title, 60),
-      pr.sourceBranch,
-      pr.targetBranch,
-    ]);
-  }
-
-  console.log(table.toString());
-
   // Select PR
   const { selectedPr } = await inquirer.prompt([
     {
@@ -52,7 +61,7 @@ export async function reviewCommand(options: { repo?: string }) {
       message: 'Select a PR:',
       choices: [
         ...prs.map((pr) => ({
-          name: `#${pr.id} - ${truncate(pr.title, 50)} (${pr.sourceBranch})`,
+          name: `#${pr.id} - ${truncate(pr.title, 50)} (${pr.sourceBranch} → ${pr.targetBranch})`,
           value: pr,
         })),
         new inquirer.Separator(),
