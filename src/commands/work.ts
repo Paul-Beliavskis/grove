@@ -47,31 +47,34 @@ export async function workCommand(
 
     if (!createNew) return null;
 
+    const defaultBranch = `feature/${ticket}`;
     const { branchName } = await inquirer.prompt([
       {
         type: 'input',
         name: 'branchName',
         message: 'New branch name:',
-        default: `feature/${ticket}`,
+        default: defaultBranch,
+        validate: (v: string) => v.trim().length > 0 || 'Branch name is required',
       },
     ]);
 
+    const safeBranchName = branchName.trim() || defaultBranch;
     selectedBranch = `origin/${repo.provider.targetBranches[0]}`;
     // Create a local branch named after the ticket from the start point
-    const folderName = stripPrefixes(branchName, repo.branchPatterns.stripPrefixes);
+    const folderName = stripPrefixes(safeBranchName, repo.branchPatterns.stripPrefixes);
     const worktreePath = join(repo.worktreeParentDir, folderName);
 
     info(`Creating worktree at ${worktreePath}`);
     let created: boolean;
     try {
-      created = addWorktree(repo.gitRoot, worktreePath, selectedBranch, branchName);
+      created = addWorktree(repo.gitRoot, worktreePath, selectedBranch, safeBranchName);
     } catch {
       error('Failed to create worktree');
       return null;
     }
 
     if (created) {
-      runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot);
+      runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot, config.hooks?.postCreate);
       success(`Worktree created: ${worktreePath}`);
     } else {
       success(`Worktree already exists: ${worktreePath}`);
@@ -114,7 +117,7 @@ export async function workCommand(
   }
 
   if (created) {
-    runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot);
+    runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot, config.hooks?.postCreate);
     success(`Worktree created: ${worktreePath}`);
   } else {
     success(`Worktree already exists: ${worktreePath}`);

@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import { existsSync, rmSync } from 'fs';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 import type { WorktreeInfo } from './types.js';
 import { basename } from 'path';
 
@@ -64,6 +64,35 @@ export function searchRemoteBranches(
 }
 
 /**
+ * Ensures a worktree is on the expected local branch, switching from detached
+ * HEAD or a wrong branch if needed.
+ */
+function ensureBranch(
+  worktreePath: string,
+  localBranch: string,
+  remoteBranch: string
+): void {
+  try {
+    execSync(`git checkout "${localBranch}"`, {
+      cwd: worktreePath,
+      stdio: 'inherit',
+    });
+  } catch {
+    // Local branch may not exist yet — create it tracking the remote
+    try {
+      execSync(
+        `git checkout -b "${localBranch}" "${remoteBranch}"`,
+        { cwd: worktreePath, stdio: 'inherit' }
+      );
+    } catch {
+      console.error(
+        `Warning: could not switch worktree to branch "${localBranch}" — it may be in a detached HEAD state.`
+      );
+    }
+  }
+}
+
+/**
  * Creates a worktree at the target path. Returns true if a new worktree was
  * created, or false if the path was already a valid worktree.
  */
@@ -73,6 +102,15 @@ export function addWorktree(
   branch: string,
   newBranch?: string
 ): boolean {
+  // Safety: ensure targetPath is a child of some parent directory and not the
+  // parent itself.  An empty folder name would resolve targetPath to the
+  // worktree parent dir and the subsequent rmSync would destroy everything.
+  const resolvedTarget = resolve(targetPath);
+  const resolvedParent = resolve(dirname(targetPath));
+  if (resolvedTarget === resolvedParent || resolvedTarget === resolve(gitRoot)) {
+    throw new Error(`Refusing to create worktree at unsafe path: ${targetPath}`);
+  }
+
   if (existsSync(targetPath)) {
     // Check if it's already a registered worktree
     const normalized = resolve(targetPath).replace(/\\/g, '/');
@@ -81,7 +119,11 @@ export function addWorktree(
       (wt) => resolve(wt.path).replace(/\\/g, '/') === normalized
     );
     if (existing) {
-      // Already a valid worktree — nothing to create
+      // Already a valid worktree — ensure it's on the expected branch
+      const expectedBranch = newBranch || branch.replace(/^origin\//, '');
+      if (existing.branch !== expectedBranch) {
+        ensureBranch(targetPath, expectedBranch, branch);
+      }
       return false;
     }
     // Stale leftover directory — prune git's worktree list and remove it
@@ -89,9 +131,27 @@ export function addWorktree(
     rmSync(targetPath, { recursive: true, force: true });
   }
 
-  const cmd = newBranch
-    ? `git worktree add -b "${newBranch}" "${targetPath}" "${branch}"`
-    : `git worktree add "${targetPath}" "${branch}"`;
+  // When creating a new local branch (-b), we need the full remote ref as the
+  // start-point (e.g. origin/main).  When checking out an existing remote
+  // branch, explicitly create a local tracking branch with -b rather than
+  // relying on git's DWIM, which can silently produce a detached HEAD.
+  let cmd: string;
+  if (newBranch) {
+    cmd = `git worktree add -b "${newBranch}" "${targetPath}" "${branch}"`;
+  } else {
+    const localBranch = branch.replace(/^origin\//, '');
+    let localExists = false;
+    try {
+      git(`rev-parse --verify "refs/heads/${localBranch}"`, gitRoot);
+      localExists = true;
+    } catch {
+      // local branch does not exist yet
+    }
+    cmd = localExists
+      ? `git worktree add "${targetPath}" "${localBranch}"`
+      : `git worktree add -b "${localBranch}" "${targetPath}" "${branch}"`;
+  }
+
   execSync(cmd, {
     cwd: gitRoot,
     stdio: 'inherit',

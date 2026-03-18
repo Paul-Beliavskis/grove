@@ -110,6 +110,16 @@ program
   });
 
 program
+  .command('hooks')
+  .description('Manage post-create hooks (global or per-repo)')
+  .option('-r, --repo <name>', 'Repo alias to use')
+  .option('-g, --global', 'Configure global hooks (all repos)')
+  .action(async (options) => {
+    const { hooksCommand } = await import('./commands/hooks.js');
+    await hooksCommand(options);
+  });
+
+program
   .command('status')
   .description('Dashboard view of all worktrees')
   .option('--no-remote', 'Skip remote checks (fast local-only mode)')

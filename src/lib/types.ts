@@ -9,6 +9,7 @@ export interface GroveConfig {
   version: number;
   ai?: AiConfig;
   jira?: JiraConfig;
+  hooks?: HooksConfig;
   repos: Record<string, RepoConfig>;
   defaults: { repo?: string };
 }

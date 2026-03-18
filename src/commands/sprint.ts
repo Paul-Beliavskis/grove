@@ -158,6 +158,21 @@ export async function sprintCommand(options: { repo?: string }): Promise<string 
   }
   issuesSpinner.succeed(`Found ${issues.length} issues`);
 
+  // Sort issues by status — Open first, then In Progress, then the rest
+  const statusOrder: Record<string, number> = {
+    'open': 0,
+    'to do': 0,
+    'in progress': 1,
+    'in review': 2,
+    'done': 3,
+    'closed': 3,
+  };
+  issues.sort((a, b) => {
+    const aOrder = statusOrder[a.status.toLowerCase()] ?? 2;
+    const bOrder = statusOrder[b.status.toLowerCase()] ?? 2;
+    return aOrder - bOrder;
+  });
+
   // Let user pick a ticket
   const { selectedTicket } = await inquirer.prompt([
     {
@@ -202,12 +217,13 @@ export async function sprintCommand(options: { repo?: string }): Promise<string 
       {
         type: 'input',
         name: 'newBranchName',
-        message: 'No existing branch found. New branch name:',
+        message: `No existing branch found. New branch name:`,
         default: defaultBranch,
+        validate: (v: string) => v.trim().length > 0 || 'Branch name is required',
       },
     ]);
 
-    branchName = newBranchName;
+    branchName = newBranchName.trim() || defaultBranch;
     selectedBranch = `origin/${repo.provider.targetBranches[0]}`;
     isNewBranch = true;
   } else if (matches.length === 1) {
@@ -229,15 +245,17 @@ export async function sprintCommand(options: { repo?: string }): Promise<string 
     ]);
 
     if (branch === '__new__') {
+      const fallbackBranch = `feature/${selectedTicket}`;
       const { newBranchName } = await inquirer.prompt([
         {
           type: 'input',
           name: 'newBranchName',
           message: 'New branch name:',
-          default: `feature/${selectedTicket}`,
+          default: fallbackBranch,
+          validate: (v: string) => v.trim().length > 0 || 'Branch name is required',
         },
       ]);
-      branchName = newBranchName;
+      branchName = newBranchName.trim() || fallbackBranch;
       selectedBranch = `origin/${repo.provider.targetBranches[0]}`;
       isNewBranch = true;
     } else {
@@ -264,7 +282,7 @@ export async function sprintCommand(options: { repo?: string }): Promise<string 
 
   if (created) {
     // Run post-create hooks only for newly created worktrees
-    runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot);
+    runPostCreateHooks(repo.hooks.postCreate, worktreePath, repo.gitRoot, config.hooks?.postCreate);
     success(`Worktree created: ${worktreePath}`);
   } else {
     success(`Worktree already exists: ${worktreePath}`);
