@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import { join } from 'path';
-import { loadConfig, getRepoConfig } from '../lib/config.js';
+import { loadConfig, getRepoConfig, promptForRepo } from '../lib/config.js';
 import {
   fetchOrigin,
   searchRemoteBranches,
@@ -14,7 +14,8 @@ export async function workCommand(
   options: { repo?: string }
 ): Promise<string | null> {
   const config = loadConfig();
-  const { name, repo } = getRepoConfig(config, options.repo);
+  const repoName = await promptForRepo(config, options.repo);
+  const { name, repo } = getRepoConfig(config, repoName);
 
   info(`Using repo: ${name}`);
 

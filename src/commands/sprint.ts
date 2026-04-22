@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import { join } from 'path';
-import { loadConfig, saveConfig, getRepoConfig } from '../lib/config.js';
+import { loadConfig, saveConfig, getRepoConfig, promptForRepo } from '../lib/config.js';
 import {
   fetchOrigin,
   searchRemoteBranches,
@@ -189,7 +189,8 @@ export async function sprintCommand(options: { repo?: string }): Promise<string 
   ]);
 
   // Now create a worktree for it — reusing work command logic
-  const { name, repo } = getRepoConfig(config, options.repo);
+  const resolved = await promptForRepo(config, options.repo);
+  const { name, repo } = getRepoConfig(config, resolved);
   info(`Using repo: ${name}`);
 
   // Fetch origin

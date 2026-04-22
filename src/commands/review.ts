@@ -1,5 +1,5 @@
 import inquirer from 'inquirer';
-import { loadConfig, getRepoConfig } from '../lib/config.js';
+import { loadConfig, getRepoConfig, promptForRepo } from '../lib/config.js';
 import { createProvider } from '../lib/providers/types.js';
 import { launchAiReview } from '../lib/ai.js';
 import { info, error, ora, truncate } from '../lib/ui.js';
@@ -7,31 +7,7 @@ import { workCommand } from './work.js';
 
 export async function reviewCommand(options: { repo?: string }) {
   const config = loadConfig();
-
-  // If no --repo flag, prompt the user to pick one
-  let repoName = options.repo;
-  if (!repoName) {
-    const repoNames = Object.keys(config.repos);
-    if (repoNames.length === 0) {
-      error('No repos configured. Run `grove init` first.');
-      return;
-    }
-    if (repoNames.length === 1) {
-      repoName = repoNames[0];
-    } else {
-      const { selectedRepo } = await inquirer.prompt([
-        {
-          type: 'list',
-          name: 'selectedRepo',
-          message: 'Select a repo:',
-          choices: repoNames,
-          default: config.defaults.repo,
-        },
-      ]);
-      repoName = selectedRepo;
-    }
-  }
-
+  const repoName = await promptForRepo(config, options.repo);
   const { name, repo } = getRepoConfig(config, repoName);
 
   info(`Fetching PRs for ${name} (${repo.provider.type})...`);

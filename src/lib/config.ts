@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import inquirer from 'inquirer';
 import type { GroveConfig } from './types.js';
 
 const CONFIG_DIR = join(homedir(), '.grove');
@@ -53,4 +54,35 @@ export function getRepoConfig(config: GroveConfig, repoName?: string) {
     );
   }
   return { name, repo };
+}
+
+/**
+ * Prompts the user to select a repo when multiple are configured and none was explicitly specified.
+ * Returns the resolved repo name.
+ */
+export async function promptForRepo(config: GroveConfig, repoName?: string): Promise<string> {
+  if (repoName) return repoName;
+
+  const repoNames = Object.keys(config.repos);
+
+  if (repoNames.length === 0) {
+    throw new Error('No repos configured. Run `grove init` first.');
+  }
+
+  if (repoNames.length === 1) {
+    return repoNames[0];
+  }
+
+  // Multiple repos: prompt the user
+  const { selected } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'selected',
+      message: 'Which repo do you want to work in?',
+      choices: repoNames,
+      default: config.defaults.repo,
+    },
+  ]);
+
+  return selected;
 }

@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import { existsSync, rmSync } from 'fs';
 import { join } from 'path';
-import { loadConfig, getRepoConfig } from '../lib/config.js';
+import { loadConfig, getRepoConfig, promptForRepo } from '../lib/config.js';
 import {
   listWorktrees,
   removeWorktree,
@@ -16,7 +16,8 @@ export async function cleanupCommand(
   options?: { repo?: string }
 ) {
   const config = loadConfig();
-  const { name: repoName, repo } = getRepoConfig(config, options?.repo);
+  const resolved = await promptForRepo(config, options?.repo);
+  const { name: repoName, repo } = getRepoConfig(config, resolved);
 
   const worktrees = listWorktrees(repo.gitRoot);
   const nonMain = worktrees.filter(
